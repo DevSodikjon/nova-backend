@@ -9,6 +9,8 @@ import { errorHandler, notFoundHandler } from "./middleware/error.js";
 import { forbidden } from "./lib/errors.js";
 import { healthRouter } from "./routes/health.js";
 import { meRouter } from "./routes/me.js";
+import { productsRouter } from "./routes/products.js";
+import { catalogRouter } from "./routes/catalog.js";
 
 export function createApp() {
   const app = express();
@@ -51,6 +53,9 @@ export function createApp() {
   );
 
   app.use(healthRouter);
+  // Katalog ommaviy: token talab qilmaydi
+  app.use("/api", productsRouter);
+  app.use("/api", catalogRouter);
   app.use("/api/me", meRouter);
 
   app.use(notFoundHandler);

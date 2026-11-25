@@ -61,10 +61,18 @@ model Address {
 // ─────────────────────────── Katalog ───────────────────────────
 
 model Product {
-  id          String  @id // slug: "drape-column-dress"
-  name        String
-  category    String // "Dresses · New season"
-  price       Decimal @db.Decimal(10, 2)
+  id       String @id // slug: "drape-column-dress"
+  name     String
+  // To'liq matn ko'rsatish uchun: "Dresses · New season"
+  category String
+  // Filtrlash uchun ajratilgan qismlar. Har so'rovda matnni bo'lib yurish
+  // indekslanmaydi va sekin; shuning uchun seed paytida bir marta ajratiladi.
+  categoryName  String // "Dresses"
+  categoryGroup String // "Clothing" | "Accessories"
+  // "New" tartiblash uchun. badge matnidan olinadi — alifbo bo'yicha
+  // tartiblash "Limited" ni "New" dan oldinga qo'yib yuborardi.
+  isNew Boolean @default(false)
+  price Decimal @db.Decimal(10, 2)
   rating      Decimal @db.Decimal(2, 1) @default(0)
   reviews     Int     @default(0)
   images      String[]
@@ -83,8 +91,9 @@ model Product {
   variants      Variant[]
   wishlistItems WishlistItem[]
 
-  @@index([category])
+  @@index([categoryName])
   @@index([isActive, sortOrder])
+  @@index([isActive, categoryName])
   @@map("products")
 }
 

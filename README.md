@@ -80,14 +80,36 @@ npm run token -- email@example.com parol    # haqiqiy ID token oladi
 |---|---|---|
 | GET | `/health` | Process holati |
 | GET | `/health/ready` | DB bilan birga holat |
-| GET | `/api/me` | Profil + buyurtma/wishlist/savat sonlari |
+| GET | `/api/products` | Katalog — filtr, tartib, betlash |
+| GET | `/api/products/:id` | Bitta mahsulot + "birga ko'rilgan" |
+| GET | `/api/categories` | Kategoriyalar, soni va muqovasi |
+| GET | `/api/filters` | Mavjud o'lchamlar, ranglar, narx oralig'i |
+| GET | `/api/me` | Profil + buyurtma/wishlist/manzil/savat sonlari |
 | PATCH | `/api/me` | Ism-familiyani o'zgartirish |
 | GET | `/api/me/addresses` | Manzillar ro'yxati |
 | POST | `/api/me/addresses` | Yangi manzil |
 | PATCH | `/api/me/addresses/:id` | Manzilni o'zgartirish |
 | DELETE | `/api/me/addresses/:id` | Manzilni o'chirish |
 
-Hammasi `Authorization: Bearer <firebase-id-token>` talab qiladi (`/health` dan tashqari).
+`/api/me*` endpointlari `Authorization: Bearer <firebase-id-token>` talab qiladi.
+Katalog (`/api/products`, `/api/categories`, `/api/filters`) ommaviy — token kerak emas.
+
+### Katalog so'rovlari
+
+```
+GET /api/products?category=Dresses&size=M&color=Navy&min=100&max=300&sort=price-asc&page=2&limit=9
+```
+
+| Parametr | Qiymat |
+|---|---|
+| `q` | Nom va kategoriya bo'yicha qidiruv |
+| `category` | Kategoriya nomi: `Dresses`, `Knitwear`, … |
+| `size` / `color` | Faqat zaxirasi bor variantlar hisobga olinadi |
+| `min` / `max` | Narx oralig'i |
+| `sort` | `featured` (standart) · `new` · `price-asc` · `price-desc` |
+| `page` / `limit` | Standart 1 va 9; `limit` maksimum 48 |
+
+Bo'sh qiymat (`?q=`) filtrsiz deb qabul qilinadi — bo'sh maydonli forma xato bermaydi.
 
 ### Xato formati
 
@@ -149,9 +171,29 @@ bu bo'lmasa hamma so'rov bitta IP dan ko'rinadi.
 xato bermaydi — shunchaki har bir token 401 bo'ladi. Shuning uchun server ishga
 tushganda manba ochilishini tekshirib, log'ga yozadi.
 
+## Katalog haqida
+
+**Ma'lumot manbasi** — `prisma/seed-data/products.json`, frontend'dagi
+`data/products.ts` dan chiqarilgan (11 mahsulot, 113 variant). `npm run db:seed`
+qayta ishga tushirilsa dublikat yaratmaydi: upsert ishlatiladi.
+
+**Kategoriya uch maydonda.** `category` to'liq matn ("Dresses · New season"),
+`categoryName` filtr uchun ("Dresses"), `categoryGroup` guruh ("Clothing").
+Har so'rovda matnni bo'lib yurish indekslanmaydi, shuning uchun bo'lish seed
+paytida bir marta bajariladi.
+
+**Zaxira holati serverda hisoblanadi.** `stockStatus` va `totalStock` javobga
+qo'shiladi. Oldin bu hisob frontend'dagi `lib/stock.ts` da edi — chegarani
+brauzerda o'zgartirib bo'lardi.
+
+**`size` va `color` birga berilsa, ular bir variantda uchrashi shart emas:**
+"M o'lchamda bor" va "Navy rangda bor" alohida tekshiriladi. Bu frontend'dagi
+`lib/shop.ts` xatti-harakatini saqlaydi. Qattiqroq qoida kerak bo'lsa
+(aynan "Navy rangning M o'lchami"), `buildWhere` dagi `AND` bitta `some`
+shartiga birlashtiriladi.
+
 ## Keyingi qadamlar
 
-- [ ] Products API + `data/products.ts` dan seed
 - [ ] Savat va wishlist (localStorage o'rniga)
 - [ ] Checkout: tranzaksiya ichida zaxira kamayishi, serverda narx hisobi
 - [ ] Buyurtmalar tarixi va holat kuzatuvi
