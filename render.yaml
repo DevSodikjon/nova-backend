@@ -1,0 +1,45 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Bu faylni Render o'qib, servisni o'zi sozlaydi. Panelda qo'lda bosib
+# sozlashdan ishonchliroq: sozlama kod bilan birga versiyalanadi va
+# boshqa muhitda qayta tiklash bir bosishda bo'ladi.
+
+services:
+  - type: web
+    name: nova-backend
+    runtime: node
+    plan: free
+
+    # MUHIM: Neon loyihangiz bilan BIR XIL region bo'lishi kerak.
+    # Boshqa regionda bo'lsa, har DB so'rovi ~100ms kechikadi.
+    #   Neon "AWS US East 2 (Ohio)"  → region: ohio
+    #   Neon "AWS Europe (Frankfurt)" → region: frankfurt
+    region: ohio
+
+    branch: main
+
+    buildCommand: npm ci && npx prisma generate && npm run build
+
+    # Har ishga tushishda kutilayotgan migration'lar qo'llanadi.
+    # `migrate deploy` — `migrate dev` dan farqli — hech qachon ma'lumotni
+    # o'chirmaydi va yangi migration fayli yaratmaydi.
+    startCommand: npx prisma migrate deploy && npm start
+
+    # Render shu manzilni tekshirib turadi; javob bermasa deploy muvaffaqiyatsiz
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+
+      # Quyidagilar Render panelida qo'lda kiritiladi (sync: false — repo'ga yozilmaydi)
+      - key: DATABASE_URL        # Neon: pooled ("-pooler" li) manzil
+        sync: false
+      - key: DIRECT_URL          # Neon: to'g'ridan-to'g'ri manzil (migration uchun)
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: CORS_ORIGINS        # Netlify domeni, masalan https://nova.netlify.app
+        sync: false

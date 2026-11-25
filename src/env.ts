@@ -6,7 +6,10 @@ import { z } from "zod";
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
+  // Ilova ulanishi. Neon'da bu "-pooler" li manzil bo'ladi.
   DATABASE_URL: z.string().min(1, "DATABASE_URL kerak"),
+  // Migration uchun to'g'ridan-to'g'ri ulanish. Lokal Postgres'da shart emas.
+  DIRECT_URL: z.string().optional(),
   FIREBASE_PROJECT_ID: z.string().min(1, "FIREBASE_PROJECT_ID kerak"),
   CORS_ORIGINS: z
     .string()
