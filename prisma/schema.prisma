@@ -1,0 +1,236 @@
+// Nova e-commerce — ma'lumotlar modeli
+// Frontend'dagi tiplar bilan mos: data/products.ts, data/orders.ts, context/shopContext.tsx
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Prisma 7: ulanish manzili bu yerda emas.
+  // Migration/introspection → prisma.config.ts, runtime → PrismaClient adapteri.
+}
+
+// ─────────────────────────── Foydalanuvchi ───────────────────────────
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+model User {
+  id          String   @id @default(cuid())
+  // Firebase Auth'dagi uid. Auth provayderi almashsa, faqat shu maydon ma'nosi o'zgaradi.
+  firebaseUid String   @unique
+  email       String   @unique
+  firstName   String   @default("")
+  lastName    String   @default("")
+  role        Role     @default(CUSTOMER)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orders        Order[]
+  addresses     Address[]
+
+  @@map("users")
+}
+
+model Address {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  street    String
+  apartment String  @default("")
+  city      String
+  state     String
+  zip       String
+  country   String  @default("United States")
+  phone     String  @default("")
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+// ─────────────────────────── Katalog ───────────────────────────
+
+model Product {
+  id          String  @id // slug: "drape-column-dress"
+  name        String
+  category    String // "Dresses · New season"
+  price       Decimal @db.Decimal(10, 2)
+  rating      Decimal @db.Decimal(2, 1) @default(0)
+  reviews     Int     @default(0)
+  images      String[]
+  alt         String  @default("")
+  badge       String?
+  description String  @default("")
+  details     String  @default("")
+  // "Bu bilan birga ko'rilgan" — oddiy slug ro'yxati (frontend consideredTogether)
+  consideredTogether String[]
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0) // "featured" tartibi
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variants      Variant[]
+  wishlistItems WishlistItem[]
+
+  @@index([category])
+  @@index([isActive, sortOrder])
+  @@map("products")
+}
+
+model Variant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  color     String
+  colorHex  String
+  size      String
+  stock     Int     @default(0)
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  // Bir mahsulotda bir rang+o'lcham faqat bir marta bo'ladi
+  @@unique([productId, color, size])
+  @@index([productId])
+  @@map("variants")
+}
+
+// ─────────────────── Savat va saqlanganlar (localStorage o'rniga) ───────────────────
+
+model CartItem {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  qty       Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, variantId])
+  @@index([userId])
+  @@map("cart_items")
+}
+
+model WishlistItem {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("wishlist_items")
+}
+
+// ─────────────────────────── Buyurtmalar ───────────────────────────
+
+enum OrderStep {
+  PLACED
+  CONFIRMED
+  PREPARED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id     String @id // "NVA-10482"
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  status OrderStep @default(PLACED)
+
+  // Pul: hammasi serverda hisoblanadi, frontend yuborgan raqamlarga ishonilmaydi
+  subtotal Decimal @db.Decimal(10, 2)
+  shipping Decimal @db.Decimal(10, 2)
+  tax      Decimal @db.Decimal(10, 2)
+  total    Decimal @db.Decimal(10, 2)
+
+  // Yetkazib berish manzili — buyurtma paytidagi nusxa (Address keyin o'zgarsa ham qotib qoladi)
+  email             String
+  shipName          String
+  shipStreet        String
+  shipApartment     String @default("")
+  shipCity          String
+  shipState         String
+  shipZip           String
+  shipCountry       String @default("United States")
+  shipPhone         String @default("")
+
+  deliveryId    String // "standard" | "express" | ...
+  deliveryLabel String
+  estimatedFrom DateTime?
+  estimatedTo   DateTime?
+
+  carrier        String?
+  trackingNumber String?
+  trackingUrl    String?
+
+  returnEligibleUntil DateTime?
+
+  // To'lov — faqat ko'rsatish uchun xavfsiz qism. To'liq karta raqami HECH QAYERDA saqlanmaydi.
+  paymentBrand String?
+  paymentLast4 String?
+  paymentName  String?
+  paidAt       DateTime?
+
+  placedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items  OrderItem[]
+  events OrderEvent[]
+
+  @@index([userId, placedAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Variant o'chirilsa ham buyurtma o'qilishi kerak → SetNull + nusxa maydonlar
+  variantId String?
+  variant   Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  // Buyurtma paytidagi holat nusxasi
+  productId String
+  name      String
+  color     String
+  size      String
+  image     String  @default("")
+  qty       Int
+  unitPrice Decimal @db.Decimal(10, 2)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderEvent {
+  id      String    @id @default(cuid())
+  orderId String
+  order   Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  step    OrderStep
+  at      DateTime  @default(now())
+  note    String?
+
+  @@unique([orderId, step])
+  @@index([orderId])
+  @@map("order_events")
+}
