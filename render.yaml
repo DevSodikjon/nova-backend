@@ -17,7 +17,9 @@ services:
 
     branch: main
 
-    buildCommand: npm ci && npx prisma generate && npm run build
+    # --include=dev MAJBURIY: NODE_ENV=production bo'lganda npm devDependencies'ni
+    # o'tkazib yuboradi, build esa aynan ularga muhtoj (typescript, @types/*, prisma CLI).
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
 
     # Har ishga tushishda kutilayotgan migration'lar qo'llanadi.
     # `migrate deploy` — `migrate dev` dan farqli — hech qachon ma'lumotni
