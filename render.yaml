@@ -12,9 +12,8 @@ services:
 
     # MUHIM: Neon loyihangiz bilan BIR XIL region bo'lishi kerak.
     # Boshqa regionda bo'lsa, har DB so'rovi ~100ms kechikadi.
-    #   Neon "AWS US East 2 (Ohio)"  → region: ohio
-    #   Neon "AWS Europe (Frankfurt)" → region: frankfurt
-    region: ohio
+    # Neon loyihasi: AWS Asia Pacific (Singapore)
+    region: singapore
 
     branch: main
 
